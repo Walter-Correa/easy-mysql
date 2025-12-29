@@ -856,17 +856,22 @@ static stock SQL::UpdateStringEntry(handle, const field[], const value[], bool:u
 	}
 	new MySQL:connectionhandle = SQL::upd_connectionHandle[handle];
 	if(SQL::upd_type[handle] != SQL::UPDATE && SQL::upd_type[handle] != SQL::TUPDATE) return 0;
-	if(use_real_escape == true)
+	if(null_value == true)
 	{
-		new escape[SQL_FORM_LENGTH_BIG];
-		mysql_escape_string(value, escape);
-		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`=NULL,", field);
-		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`='%s',", field, escape);
+		mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`=NULL,", field);
 	}
 	else
 	{
-		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`=NULL,", field);
-		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`='%s',", field, value);
+		if(use_real_escape == true)
+		{
+			new escape[SQL_FORM_LENGTH_BIG];
+			mysql_escape_string(value, escape);
+			mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`='%s',", field, escape);
+		}
+		else
+		{
+			mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`='%s',", field, value);
+		}
 	}
 	strcat(SQL::upd_query[handle], SQL::upd_form3);
 	SQL::upd_datacount[handle]++;
@@ -950,17 +955,22 @@ static stock SQL::InsertStringEntry(handle, const field[], const value[], bool:u
 	if(SQL::upd_type[handle] != SQL::INSERT) return 0;
 	mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`,", field);
 	strcat(SQL::upd_query[handle], SQL::upd_form3);
-	if(use_real_escape == true)
+	if(null_value == true)
 	{
-		new escape[SQL_FORM_LENGTH_BIG];
-		mysql_escape_string(value, escape);
-		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "NULL,");
-		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "'%s',", escape);
+		mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "NULL,");
 	}
 	else
 	{
-		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "NULL,");
-		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "'%s',", value);
+		if(use_real_escape == true)
+		{
+			new escape[SQL_FORM_LENGTH_BIG];
+			mysql_escape_string(value, escape);
+			mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "'%s',", escape);
+		}
+		else
+		{
+			mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "'%s',", value);
+		}
 	}
 	strcat(SQL::upd_query_2[handle], SQL::upd_form3);
 	SQL::upd_datacount[handle]++;
