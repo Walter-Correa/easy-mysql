@@ -72,6 +72,7 @@ Bugs solved.
 #define SQL_MAX_INDEXES						(4)
 #define SQL_INVALID_HANDLE					(-1)
 #define SQL_FORM_LENGTH						(256)
+#define SQL_FORM_LENGTH_BIG					(1350)
 #define SQL:: 	SQL_T
 #define SQL_Warning(%0)      				(printf("[MYSQL] - WARNING: " %0))
 #define SQL_Error(%0)        				(printf("[MYSQL] - ERROR: " %0))
@@ -96,16 +97,17 @@ static stock
 	SQL::upd_increment_key[SQL_MAX_HANDLES][SQL_FORM_LENGTH],
 	SQL::upd_form[SQL_FORM_LENGTH],
 	SQL::upd_form2[SQL_FORM_LENGTH],
+	SQL::upd_form3[SQL_FORM_LENGTH_BIG],
 	SQL::upd_datacount[SQL_MAX_HANDLES],
 	SQL::qtypes:SQL::upd_type[SQL_MAX_HANDLES],
 	SQL::upd_pos[SQL_MAX_HANDLES],
 	Cache:SQL::ReadCache[SQL_MAX_HANDLES],
 	bool:SQL::upd_useautoincrement[SQL_MAX_HANDLES],
-    SQL::primarykey[SQL_MAX_HANDLES][64],
+	SQL::primarykey[SQL_MAX_HANDLES][64],
 	SQL::engine[SQL_MAX_HANDLES][64],
 	SQL::charset[SQL_MAX_HANDLES][64],
-    SQL::index_set[SQL_MAX_HANDLES][SQL_MAX_INDEXES],
-    SQL::index[SQL_MAX_HANDLES][SQL_MAX_INDEXES][64],
+	SQL::index_set[SQL_MAX_HANDLES][SQL_MAX_INDEXES],
+	SQL::index[SQL_MAX_HANDLES][SQL_MAX_INDEXES][64],
 	SQL::isset_primarykey[SQL_MAX_HANDLES]
 ;
 
@@ -845,7 +847,7 @@ static stock SQL::UpdateFloatEntry(handle, const field[], Float:value)
 	return 1;
 }
 
-static stock SQL::UpdateStringEntry(handle, const field[], const value[], bool:use_real_escape = true)
+static stock SQL::UpdateStringEntry(handle, const field[], const value[], bool:use_real_escape = true, bool:null_value = false)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
@@ -856,15 +858,17 @@ static stock SQL::UpdateStringEntry(handle, const field[], const value[], bool:u
 	if(SQL::upd_type[handle] != SQL::UPDATE && SQL::upd_type[handle] != SQL::TUPDATE) return 0;
 	if(use_real_escape == true)
 	{
-		new escape[SQL_FORM_LENGTH];
+		new escape[SQL_FORM_LENGTH_BIG];
 		mysql_escape_string(value, escape);
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`='%s',", field, escape);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`=NULL,", field);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`='%s',", field, escape);
 	}
 	else
 	{
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`='%s',", field, value);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`=NULL,", field);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`='%s',", field, value);
 	}
-	strcat(SQL::upd_query[handle], SQL::upd_form);
+	strcat(SQL::upd_query[handle], SQL::upd_form3);
 	SQL::upd_datacount[handle]++;
 	return 1;
 }
@@ -900,7 +904,7 @@ static stock SQL::OpenTable_Insert(const table[], bool:use_autoincrement = false
 	return i;
 }
 
-static stock SQL::InsertIntEntry(handle, const field[], value)
+static stock SQL::InsertIntEntry(handle, const field[], value, bool:null_value = false)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
@@ -911,7 +915,8 @@ static stock SQL::InsertIntEntry(handle, const field[], value)
 	if(SQL::upd_type[handle] != SQL::INSERT) return 0;
 	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`,", field);
 	strcat(SQL::upd_query[handle], SQL::upd_form);
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "'%i',", value);
+	if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "NULL,");
+	else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "'%i',", value);
 	strcat(SQL::upd_query_2[handle], SQL::upd_form);
 	SQL::upd_datacount[handle]++;
 	return 1;
@@ -934,7 +939,7 @@ static stock SQL::InsertFloatEntry(handle, const field[], Float:value)
 	return 1;
 }
 
-static stock SQL::InsertStringEntry(handle, const field[], const value[], bool:use_real_escape = true)
+static stock SQL::InsertStringEntry(handle, const field[], const value[], bool:use_real_escape = true, bool:null_value = false)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
@@ -943,19 +948,21 @@ static stock SQL::InsertStringEntry(handle, const field[], const value[], bool:u
 	}
 	new MySQL:connectionhandle = SQL::upd_connectionHandle[handle];
 	if(SQL::upd_type[handle] != SQL::INSERT) return 0;
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`,", field);
-	strcat(SQL::upd_query[handle], SQL::upd_form);
+	mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "`%s`,", field);
+	strcat(SQL::upd_query[handle], SQL::upd_form3);
 	if(use_real_escape == true)
 	{
-		new escape[SQL_FORM_LENGTH];
+		new escape[SQL_FORM_LENGTH_BIG];
 		mysql_escape_string(value, escape);
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "'%s',", escape);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "NULL,");
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "'%s',", escape);
 	}
 	else
 	{
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "'%s',", value);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "NULL,");
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "'%s',", value);
 	}
-	strcat(SQL::upd_query_2[handle], SQL::upd_form);
+	strcat(SQL::upd_query_2[handle], SQL::upd_form3);
 	SQL::upd_datacount[handle]++;
 	return 1;
 }
@@ -966,11 +973,21 @@ Actual functions
 
 #define SQL_TReadRetrievedRows(%0,%1) if(IsMultiReadHandleValid(%0)) if(cache_num_rows()) for(new %1 = 0; %1 < cache_num_rows(); %1++)
 
-stock SQL::cache_get_value_name_int(row_idx, const column_where[])
+stock SQL::cache_get_value_name(row_idx, const column_where[], dest[], max_len)
 {
-	new int = 0;
-	cache_get_value_name_int(row_idx, column_where, int);
-	return int;
+	new bool:is_null;
+	cache_is_value_name_null(row_idx, column_where, is_null);
+	if(!is_null) cache_get_value_name(row_idx, column_where, dest, max_len);
+	else dest[0] = '\0';
+	return 1;
+}
+stock SQL::cache_get_value_name_int(row_idx, const column_where[], &dest)
+{
+	new bool:is_null;
+	cache_is_value_name_null(row_idx, column_where, is_null);
+	if(!is_null) cache_get_value_name_int(row_idx, column_where, dest);
+	else dest = 0;
+	return 1;
 }
 stock Float:SQL::cache_get_value_name_float(row_idx, const column_where[])
 {
@@ -1274,7 +1291,7 @@ stock SQL::GetIntEntry(const table[], const field[], const column_where[] = "", 
 	if(result)
 	{
 	    cache_get_row_count(count);
-		if(count) cache_get_value_name_int(0, field, int);
+		if(count) SQL::cache_get_value_name_int(0, field, int);
 		cache_delete(result);
 	}
 	return int;
@@ -1303,7 +1320,7 @@ stock SQL::GetIntEntry2(const table[], const field[], const column_where[] = "",
 	if(result)
 	{
 	    cache_get_row_count(count);
-		if(count) cache_get_value_name_int(0, field, int);
+		if(count) SQL::cache_get_value_name_int(0, field, int);
 		cache_delete(result);
 	}
 	return int;
@@ -1393,7 +1410,7 @@ stock SQL::t_GetStringEntry(const table[], const field[], const column_where[] =
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			cache_delete(result);
 		}
 		else
@@ -1420,7 +1437,7 @@ stock SQL::t_GetStringEntry2(const table[], const field[], const column_where[] 
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			cache_delete(result);
 		}
 		else
@@ -1446,7 +1463,7 @@ stock SQL::GetStringEntry(const table[], const field[], const column_where[] = "
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			strcpy(dest, SQL::upd_form, len);
 			cache_delete(result);
 		}
@@ -1484,7 +1501,7 @@ stock SQL::GetStringEntry2(const table[], const field[], const column_where[] = 
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			strcpy(dest, SQL::upd_form, len);
 			cache_delete(result);
 		}
@@ -1511,7 +1528,7 @@ stock SQL::GetStringEntryEx(const table[], const field[], const column_where[] =
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			strcpy(dest, SQL::upd_form, len);
 			cache_delete(result);
 		}
@@ -1549,7 +1566,7 @@ stock SQL::GetStringEntryEx2(const table[], const field[], const column_where[] 
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			strcpy(dest, SQL::upd_form, len);
 			cache_delete(result);
 		}
@@ -1577,7 +1594,7 @@ stock SQL::t_GetStringEntryEx(const table[], const field[], const column_where[]
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			cache_delete(result);
 		}
 		else
@@ -1615,7 +1632,7 @@ stock SQL::t_GetStringEntryEx2(const table[], const field[], const column_where[
 	    cache_get_row_count(count);
 		if(count == 1)
 		{
-			cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
+			SQL::cache_get_value_name(0, field, SQL::upd_form, sizeof(SQL::upd_form));
 			cache_delete(result);
 		}
 		else
@@ -1639,10 +1656,7 @@ stock SQL::GetIntEntryEx(const table[], const field[], const column_where[] = ""
 	if(result)
 	{
 	    cache_get_row_count(count);
-		if(count == 1)
-		{
-			cache_get_value_name_int(0, field, int);
-		}
+		if(count == 1) SQL::cache_get_value_name_int(0, field, int);
 		else
 		{
 			int = -1;
@@ -1675,10 +1689,7 @@ stock SQL::GetIntEntryEx2(const table[], const field[], const column_where[] = "
 	if(result)
 	{
 	    cache_get_row_count(count);
-		if(count == 1)
-		{
-			cache_get_value_name_int(0, field, int);
-		}
+		if(count == 1) SQL::cache_get_value_name_int(0, field, int);
 		else
 		{
 			int = -1;
@@ -1736,10 +1747,7 @@ stock Float:SQL::GetFloatEntryEx2(const table[], const field[], const column_whe
 	if(result)
 	{
 	    cache_get_row_count(count);
-		if(count == 1)
-		{
-			cache_get_value_name_int(0, field, int);
-		}
+		if(count == 1) SQL::cache_get_value_name_int(0, field, int);
 		else
 		{
 			int = -1.0;
@@ -1860,12 +1868,12 @@ stock SQL::ReadInt(handle, const field[], &dest, row = 0)
 	}
 	if(SQL::upd_type[handle] == SQL::READ)
 	{
-		cache_get_value_name_int(0, field, dest);
+		SQL::cache_get_value_name_int(0, field, dest);
 		SQL::upd_datacount[handle]++;
 	}
 	else if(SQL::upd_type[handle] == SQL::CALLBACK)
 	{
-	    cache_get_value_name_int(row, field, dest);
+	    SQL::cache_get_value_name_int(row, field, dest);
 	    SQL::upd_datacount[handle]++;
 	}
 	else return 0;
@@ -1876,7 +1884,7 @@ stock SQL::ReadFloat(handle, const field[], &Float:dest, row = 0)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
-		SQL_Error("(SQL::ReadInt) Invalid handle. Make sure you opened the table first.");
+		SQL_Error("(SQL::ReadFloat) Invalid handle. Make sure you opened the table first.");
 		return 0;
 	}
 	if(SQL::upd_type[handle] == SQL::READ)
@@ -1897,17 +1905,17 @@ stock SQL::ReadString(handle, const field[], dest[], len = sizeof(dest), row = 0
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
-		SQL_Error("(SQL::ReadInt) Invalid handle. Make sure you opened the table first.");
+		SQL_Error("(SQL::ReadString) Invalid handle. Make sure you opened the table first.");
 		return 0;
 	}
 	if(SQL::upd_type[handle] == SQL::READ)
 	{
-		cache_get_value_name(0, field, dest, len+1);
+		SQL::cache_get_value_name(0, field, dest, len+1);
 		SQL::upd_datacount[handle]++;
 	}
 	else if(SQL::upd_type[handle] == SQL::CALLBACK)
 	{
-        cache_get_value_name(row, field, dest, len+1);
+        SQL::cache_get_value_name(row, field, dest, len+1);
         SQL::upd_datacount[handle]++;
 	}
 	else return 0;
@@ -1915,7 +1923,7 @@ stock SQL::ReadString(handle, const field[], dest[], len = sizeof(dest), row = 0
 }
 
 
-stock SQL::UpdateIntEntry(handle, const field[], value)
+stock SQL::UpdateIntEntry(handle, const field[], value, bool:null_value = false)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
@@ -1924,13 +1932,14 @@ stock SQL::UpdateIntEntry(handle, const field[], value)
 	}
 	new MySQL:connectionhandle = SQL::upd_connectionHandle[handle];
 	if(SQL::upd_type[handle] != SQL::UPDATE && SQL::upd_type[handle] != SQL::TUPDATE) return 0;
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`='%i',", field, value);
+	if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`=NULL,", field);
+	else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "`%s`='%i',", field, value);
 	strcat(SQL::upd_query[handle], SQL::upd_form);
 	SQL::upd_datacount[handle]++;
 	return 1;
 }
 
-stock SQL::WriteInt(handle, const field[], value)
+stock SQL::WriteInt(handle, const field[], value, bool:null_value = false)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
@@ -1941,15 +1950,15 @@ stock SQL::WriteInt(handle, const field[], value)
 	{
 		case SQL::UPDATE:
 		{
-			return SQL::UpdateIntEntry(handle, field, value);
+			return SQL::UpdateIntEntry(handle, field, value, null_value);
 		}
 		case SQL::TUPDATE:
 		{
-			return SQL::UpdateIntEntry(handle, field, value);
+			return SQL::UpdateIntEntry(handle, field, value, null_value);
 		}
 		case SQL::INSERT:
 		{
-			return SQL::InsertIntEntry(handle, field, value);
+			return SQL::InsertIntEntry(handle, field, value, null_value);
 		}
 	}
 	return 0;
@@ -1980,7 +1989,7 @@ stock SQL::WriteFloat(handle, const field[], Float:value)
 	return 0;
 }
 
-stock SQL::WriteString(handle, const field[], const value[], bool: use_real_escape = true)
+stock SQL::WriteString(handle, const field[], const value[], bool:use_real_escape = true, bool:null_value = false)
 {
 	if(!SQL::IsValidUpdatingSlot(handle))
 	{
@@ -1991,15 +2000,15 @@ stock SQL::WriteString(handle, const field[], const value[], bool: use_real_esca
 	{
 		case SQL::UPDATE:
 		{
-			return SQL::UpdateStringEntry(handle, field, value, use_real_escape);
+			return SQL::UpdateStringEntry(handle, field, value, use_real_escape, null_value);
 		}
 		case SQL::TUPDATE:
 		{
-			return SQL::UpdateStringEntry(handle, field, value, use_real_escape);
+			return SQL::UpdateStringEntry(handle, field, value, use_real_escape, null_value);
 		}
 		case SQL::INSERT:
 		{
-			return SQL::InsertStringEntry(handle, field, value, use_real_escape);
+			return SQL::InsertStringEntry(handle, field, value, use_real_escape, null_value);
 		}
 	}
 	return 0;
@@ -2160,20 +2169,22 @@ stock SQL::Close(handle)
 	return -1;
 }
 
-stock SQL::SetIntEntry(const table[], const field[], value, const column_where[] = "", row_identifier = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetIntEntry(const table[], const field[], value, const column_where[] = "", row_identifier = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%d' ", table, field, value, column_where, row_identifier);
+	if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%d' ", table, field, column_where, row_identifier);
+	else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%d' ", table, field, value, column_where, row_identifier);
 	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
 	return 1;
 }
 
-stock SQL::SetIntEntry2(const table[], const field[], value, const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetIntEntry2(const table[], const field[], value, const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%d'", table, field, value, column_where, row_identifier);
+	if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%d'", table, field, column_where, row_identifier);
+	else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%d'", table, field, value, column_where, row_identifier);
 	if(!isnull(column_where2) && row_identifier2 != -1 && isnull(row_identifier3))
 	{
 		mysql_format(MySQL:connectionhandle, SQL::upd_form2, sizeof(SQL::upd_form2), " AND `%s`='%d'", column_where2, row_identifier2);
@@ -2189,20 +2200,51 @@ stock SQL::SetIntEntry2(const table[], const field[], value, const column_where[
 	return 1;
 }
 
-stock SQL::SetIntEntryEx(const table[], const field[], value, const column_where[] = "", const row_identifier[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetIntEntry3(const table[], const field[], const field_value[], value, const column_where[] = "", row_identifier = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
+	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=`%s`+'%d' WHERE `%s`='%d' ", table, field, field_value, value, column_where, row_identifier);
 	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
 	return 1;
 }
 
-stock SQL::SetIntEntryEx2(const table[], const field[], value, const column_where[] = "", const row_identifier[] = "", const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetIntEntry4(const table[], const field[], const field_value[], value, const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
-	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
+	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=`%s`+'%d' WHERE `%s`='%d' ", table, field, field_value, value, column_where, row_identifier);
+	if(!isnull(column_where2) && row_identifier2 != -1 && isnull(row_identifier3))
+	{
+		mysql_format(MySQL:connectionhandle, SQL::upd_form2, sizeof(SQL::upd_form2), " AND `%s`='%d'", column_where2, row_identifier2);
+		strcat(SQL::upd_form, SQL::upd_form2);
+	}
+	if(!isnull(column_where2) && !isnull(row_identifier3) && row_identifier2 == -1)
+	{
+		mysql_format(MySQL:connectionhandle, SQL::upd_form2, sizeof(SQL::upd_form2), " AND `%s`='%s'", column_where2, row_identifier3);
+		strcat(SQL::upd_form, SQL::upd_form2);
+	}
+	strcat(SQL::upd_form, " ");
+	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
+	return 1;
+}
+
+stock SQL::SetIntEntryEx(const table[], const field[], value, const column_where[] = "", const row_identifier[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
+{
+	if(!table[0]) return 0;
+	if(!field[0]) return 0;
+	if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
+	else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
+	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
+	return 1;
+}
+
+stock SQL::SetIntEntryEx2(const table[], const field[], value, const column_where[] = "", const row_identifier[] = "", const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
+{
+	if(!table[0]) return 0;
+	if(!field[0]) return 0;
+	if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
+	else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%d' WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
 	if(!isnull(column_where2) && !isnull(row_identifier2) && row_identifier3 == -1)
 	{
 		mysql_format(MySQL:connectionhandle, SQL::upd_form2, sizeof(SQL::upd_form2), " AND `%s`='%e'", column_where2, row_identifier2);
@@ -2218,35 +2260,68 @@ stock SQL::SetIntEntryEx2(const table[], const field[], value, const column_wher
 	return 1;
 }
 
-stock SQL::SetStringEntry(const table[], const field[], const value[], const column_where[] = "", row_identifier = -1, bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetIntEntryEx3(const table[], const field[], const field_value[], value, const column_where[] = "", const row_identifier[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
-	if(use_real_escape == true)
-	{
-		//Not using mysql_escape_string as the %e specifier is faster.
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%d' ", table, field, value, column_where, row_identifier);
-	}
-	else
-	{
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%s' WHERE `%s`='%d' ", table, field, value, column_where, row_identifier);
-	}
+	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=`%s`+'%d' WHERE `%s`='%e' ", table, field, field_value, value, column_where, row_identifier);
 	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
 	return 1;
 }
 
-stock SQL::SetStringEntry2(const table[], const field[], const value[], const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetIntEntryEx4(const table[], const field[], const field_value[], value, const column_where[] = "", const row_identifier[] = "", const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+{
+	if(!table[0]) return 0;
+	if(!field[0]) return 0;
+	mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=`%s`+'%d' WHERE `%s`='%e' ", table, field, field_value, value, column_where, row_identifier);
+	if(!isnull(column_where2) && !isnull(row_identifier2) && row_identifier3 == -1)
+	{
+		mysql_format(MySQL:connectionhandle, SQL::upd_form2, sizeof(SQL::upd_form2), " AND `%s`='%e'", column_where2, row_identifier2);
+		strcat(SQL::upd_form, SQL::upd_form2);
+	}
+	if(!isnull(column_where2) && row_identifier3 != -1 && isnull(row_identifier2))
+	{
+		mysql_format(MySQL:connectionhandle, SQL::upd_form2, sizeof(SQL::upd_form2), " AND `%s`='%d'", column_where2, row_identifier3);
+		strcat(SQL::upd_form, SQL::upd_form2);
+	}
+	strcat(SQL::upd_form, " ");
+	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
+	return 1;
+}
+
+stock SQL::SetStringEntry(const table[], const field[], const value[], const column_where[] = "", row_identifier = -1, bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
 	if(use_real_escape == true)
 	{
 		//Not using mysql_escape_string as the %e specifier is faster.
- 		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%d'", table, field, value, column_where, row_identifier);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%d' ", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%d' ", table, field, value, column_where, row_identifier);
 	}
 	else
 	{
- 		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%d'", table, field, value, column_where, row_identifier);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%d' ", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form3, sizeof(SQL::upd_form3), "UPDATE `%s` SET `%s`='%s' WHERE `%s`='%d' ", table, field, value, column_where, row_identifier);
+	}
+	mysql_tquery(MySQL:connectionhandle, SQL::upd_form3, "", "");
+	return 1;
+}
+
+stock SQL::SetStringEntry2(const table[], const field[], const value[], const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
+{
+	if(!table[0]) return 0;
+	if(!field[0]) return 0;
+	if(use_real_escape == true)
+	{
+		//Not using mysql_escape_string as the %e specifier is faster.
+ 		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%d'", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%d'", table, field, value, column_where, row_identifier);
+	}
+	else
+	{
+ 		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%d'", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%d'", table, field, value, column_where, row_identifier);
 	}
 	if(!isnull(column_where2) && row_identifier2 != -1 && isnull(row_identifier3))
 	{
@@ -2263,35 +2338,39 @@ stock SQL::SetStringEntry2(const table[], const field[], const value[], const co
 	return 1;
 }
 
-stock SQL::SetStringEntryEx(const table[], const field[], const value[], const column_where[] = "", const row_identifier[] = "", bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetStringEntryEx(const table[], const field[], const value[], const column_where[] = "", const row_identifier[] = "", bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
 	if(use_real_escape == true)
 	{
 		//Not using mysql_escape_string as the %e specifier is faster.
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%e' ", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
 	}
 	else
 	{
-		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%s' WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
+		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%e' ", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%s' WHERE `%s`='%e' ", table, field, value, column_where, row_identifier);
 	}
 	mysql_tquery(MySQL:connectionhandle, SQL::upd_form, "", "");
 	return 1;
 }
 
-stock SQL::SetStringEntryEx2(const table[], const field[], const value[], const column_where[] = "", const row_identifier[] = "", const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::SetStringEntryEx2(const table[], const field[], const value[], const column_where[] = "", const row_identifier[] = "", const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, bool:use_real_escape = true, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE, bool:null_value = false)
 {
 	if(!table[0]) return 0;
 	if(!field[0]) return 0;
 	if(use_real_escape == true)
 	{
 		//Not using mysql_escape_string as the %e specifier is faster.
- 		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
+ 		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%e'", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%e' WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
 	}
 	else
 	{
-  		mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%s' WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
+  		if(null_value == true) mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`=NULL WHERE `%s`='%e'", table, field, column_where, row_identifier);
+		else mysql_format(MySQL:connectionhandle, SQL::upd_form, sizeof(SQL::upd_form), "UPDATE `%s` SET `%s`='%s' WHERE `%s`='%e'", table, field, value, column_where, row_identifier);
 	}
 	if(!isnull(column_where2) && !isnull(row_identifier2) && row_identifier3 == -1)
 	{
