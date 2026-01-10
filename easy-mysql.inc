@@ -2553,6 +2553,14 @@ stock SQL::RowExistsEx2(const table[], const column_where[] = "", const row_iden
 	return 0;
 }
 
+stock SQL::TruncateTable(const table[], MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+{
+	new query[SQL_FORM_LENGTH];
+	mysql_format(MySQL:connectionhandle, query, sizeof(query), "TRUNCATE TABLE %s;", table);
+	mysql_tquery(MySQL:connectionhandle, query, "", "");
+	return 0;
+}
+
 stock SQL::DropTable(const table[], MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
 	new query[SQL_FORM_LENGTH];
