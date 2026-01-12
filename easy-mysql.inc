@@ -84,7 +84,7 @@ Internal variables and functions
 ================================================================================*/
 
 enum SQL::datatypes {SQL_TYPE_INT, SQL_TYPE_VCHAR, SQL_TYPE_FLOAT}
-enum SQL::qtypes {SQL::UPDATE, SQL::UPDATE2, SQL::TUPDATE, SQL::CREATE, SQL::INSERT, SQL_TYPE_DELETE, SQL::READ, SQL::READ2, SQL::TREAD, SQL::CALLBACK, SQL::MREAD, SQL::MREAD2, SQL::MTREAD}
+enum SQL::qtypes {SQL::UPDATE, SQL::UPDATE2, SQL::TUPDATE, SQL::CREATE, SQL::INSERT, SQL::READ, SQL::READ2, SQL::TREAD, SQL::CALLBACK, SQL::MREAD, SQL::MREAD2, SQL::MTREAD}
 enum SQL::ftypes {SQL::CASCADE, SQL::SETNULL, SQL::NOACTION, SQL::RESTRICT}
 
 static stock
@@ -1131,108 +1131,110 @@ stock SQL::DeleteRow3(const table[], MySQL:connectionhandle, const column_where[
 
 stock SQL::Open(SQL::qtypes:type, const table[], const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", limit = -1, limit2 = -1, const desc[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
-	new handle;
-	switch(type)
-	{
-		case SQL::CREATE:
-		{
-		    handle = SQL::CreateTable(table, (isnull(column_where)) ? ("InnoDB") : (column_where), (isnull(column_where2)) ? ("latin5") : (column_where2), MySQL:connectionhandle);
-		}
-		case SQL::READ:
-		{
-			handle = SQL::OpenTable_Read(table, column_where, row_identifier, MySQL:connectionhandle);
-		}
-		case SQL::READ2:
-		{
-			handle = SQL::OpenTable_Read2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
-		}
-		case SQL::TREAD:
-		{
-			handle = SQL::OpenTable_TableRead(table, MySQL:connectionhandle);
-		}
-		case SQL::INSERT:
-		{
-			handle = SQL::OpenTable_Insert(table, false, MySQL:connectionhandle);
-		}
-		case SQL::UPDATE:
-		{
-			handle = SQL::OpenTable_Update(table, column_where, row_identifier, MySQL:connectionhandle);
-		}
-		case SQL::UPDATE2:
-		{
-			handle = SQL::OpenTable_Update2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
-		}
-		case SQL::TUPDATE:
-		{
-			handle = SQL::OpenTable_TableUpdate(table, MySQL:connectionhandle);
-		}
-		case SQL::MREAD:
-		{
-			handle = SQL::OpenTable_MultiRead(table, column_where, row_identifier, limit, limit2, desc, MySQL:connectionhandle);
-		}
-		case SQL::MREAD2:
-		{
-			handle = SQL::OpenTable_MultiRead2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, limit, limit2, desc, MySQL:connectionhandle);
-		}
-		case SQL::MTREAD:
-		{
-			handle = SQL::OpenTable_MultiTableRead(table, MySQL:connectionhandle);
-		}
-	}
-	return handle;
+    new handle;
+
+    if(type == SQL::CREATE)
+    {
+        handle = SQL::CreateTable(table, (isnull(column_where)) ? ("InnoDB") : (column_where), (isnull(column_where2)) ? ("latin5") : (column_where2), MySQL:connectionhandle);
+    }
+    else if(type == SQL::READ)
+    {
+        handle = SQL::OpenTable_Read(table, column_where, row_identifier, MySQL:connectionhandle);
+    }
+    else if(type == SQL::READ2)
+    {
+        handle = SQL::OpenTable_Read2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
+    }
+    else if(type == SQL::TREAD)
+    {
+        handle = SQL::OpenTable_TableRead(table, MySQL:connectionhandle);
+    }
+    else if(type == SQL::INSERT)
+    {
+        handle = SQL::OpenTable_Insert(table, false, MySQL:connectionhandle);
+    }
+    else if(type == SQL::UPDATE)
+    {
+        handle = SQL::OpenTable_Update(table, column_where, row_identifier, MySQL:connectionhandle);
+    }
+    else if(type == SQL::UPDATE2)
+    {
+        handle = SQL::OpenTable_Update2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
+    }
+    else if(type == SQL::TUPDATE)
+    {
+        handle = SQL::OpenTable_TableUpdate(table, MySQL:connectionhandle);
+    }
+    else if(type == SQL::MREAD)
+    {
+        handle = SQL::OpenTable_MultiRead(table, column_where, row_identifier, limit, limit2, desc, MySQL:connectionhandle);
+    }
+    else if(type == SQL::MREAD2)
+    {
+        handle = SQL::OpenTable_MultiRead2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, limit, limit2, desc, MySQL:connectionhandle);
+    }
+    else if(type == SQL::MTREAD)
+    {
+        handle = SQL::OpenTable_MultiTableRead(table, MySQL:connectionhandle);
+    }
+
+    return handle;
 }
 
 stock SQL::OpenEx(SQL::qtypes:type, const table[], const column_where[] = "", const row_identifier[] = "", const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, limit = -1, limit2 = -1, const desc[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
-	new handle;
-	switch(type)
-	{
-		case SQL::CREATE:
-		{
-			handle = SQL::CreateTable(table, (isnull(column_where)) ? ("InnoDB") : (column_where), (isnull(column_where2)) ? ("latin5") : (column_where2), MySQL:connectionhandle);
-		}
-		case SQL::READ:
-		{
-			handle = SQL::OpenTable_ReadEx(table, column_where, row_identifier, MySQL:connectionhandle);
-		}
-		case SQL::READ2:
-		{
-			handle = SQL::OpenTable_ReadEx2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
-		}
-		case SQL::TREAD:
-		{
-			handle = SQL::OpenTable_TableRead(table, MySQL:connectionhandle);
-		}
-		case SQL::INSERT:
-		{
-			handle = SQL::OpenTable_Insert(table, false, MySQL:connectionhandle);
-		}
-		case SQL::UPDATE:
-		{
-			handle = SQL::OpenTable_UpdateEx(table, column_where, row_identifier, MySQL:connectionhandle);
-		}
-		case SQL::UPDATE2:
-		{
-			handle = SQL::OpenTable_UpdateEx2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
-		}
-		case SQL::TUPDATE:
-		{
-			handle = SQL::OpenTable_TableUpdate(table, MySQL:connectionhandle);
-		}
-		case SQL::MREAD:
-		{
-			handle = SQL::OpenTable_MultiReadEx(table, column_where, row_identifier, limit, limit2, desc, MySQL:connectionhandle);
-		}
-		case SQL::MREAD2:
-		{
-			handle = SQL::OpenTable_MultiReadEx2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, limit, limit2, desc, MySQL:connectionhandle);
-		}
-		case SQL::MTREAD:
-		{
-			handle = SQL::OpenTable_MultiTableRead(table, MySQL:connectionhandle);
-		}
-	}
-	return handle;
+    new handle;
+
+    if(type == SQL::CREATE)
+    {
+        handle = SQL::CreateTable(table, 
+            (isnull(column_where)) ? ("InnoDB") : (column_where), 
+            (isnull(column_where2)) ? ("latin5") : (column_where2), 
+            MySQL:connectionhandle
+        );
+    }
+    else if(type == SQL::READ)
+    {
+        handle = SQL::OpenTable_ReadEx(table, column_where, row_identifier, MySQL:connectionhandle);
+    }
+    else if(type == SQL::READ2)
+    {
+        handle = SQL::OpenTable_ReadEx2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
+    }
+    else if(type == SQL::TREAD)
+    {
+        handle = SQL::OpenTable_TableRead(table, MySQL:connectionhandle);
+    }
+    else if(type == SQL::INSERT)
+    {
+        handle = SQL::OpenTable_Insert(table, false, MySQL:connectionhandle);
+    }
+    else if(type == SQL::UPDATE)
+    {
+        handle = SQL::OpenTable_UpdateEx(table, column_where, row_identifier, MySQL:connectionhandle);
+    }
+    else if(type == SQL::UPDATE2)
+    {
+        handle = SQL::OpenTable_UpdateEx2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, MySQL:connectionhandle);
+    }
+    else if(type == SQL::TUPDATE)
+    {
+        handle = SQL::OpenTable_TableUpdate(table, MySQL:connectionhandle);
+    }
+    else if(type == SQL::MREAD)
+    {
+        handle = SQL::OpenTable_MultiReadEx(table, column_where, row_identifier, limit, limit2, desc, MySQL:connectionhandle);
+    }
+    else if(type == SQL::MREAD2)
+    {
+        handle = SQL::OpenTable_MultiReadEx2(table, column_where, row_identifier, column_where2, row_identifier2, row_identifier3, limit, limit2, desc, MySQL:connectionhandle);
+    }
+    else if(type == SQL::MTREAD)
+    {
+        handle = SQL::OpenTable_MultiTableRead(table, MySQL:connectionhandle);
+    }
+
+    return handle;
 }
 
 stock SQL::ToggleAutoIncrement(handle, bool:toggle)
