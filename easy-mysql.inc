@@ -64,7 +64,7 @@ Bugs solved.
 	((!(%1[0])) || (((%1[0]) == '\1') && (!(%1[1]))))
 #endif
 #if !defined SQL_MAX_HANDLES
-	#define SQL_MAX_HANDLES                 (3)//Maximun concurrent handles running.
+	#define SQL_MAX_HANDLES                 (10)//Maximun concurrent handles running.
 #endif
 
 #define SQL_MAX_TABLE_NAME 					(64)
@@ -2508,10 +2508,11 @@ stock SQL::CountRows(const tablename[], MySQL:connectionhandle = MYSQL_DEFAULT_H
 	return rows;
 }
 
-stock SQL::RowExistsEx(const table[], const column_where[] = "", const row_identifier[], MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::RowExistsEx(const table[], const column_where[] = "", const row_identifier[], const select[]="1", limit = 1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
-	new query[SQL_FORM_LENGTH], Cache:result, rows;
-	mysql_format(MySQL:connectionhandle, query, sizeof(query),"SELECT * FROM `%s` WHERE `%s`='%e' ", table, column_where, row_identifier);
+	new query[SQL_FORM_LENGTH], Cache:result, rows, str_limit[11];
+	if(limit > 0) format(str_limit,sizeof(str_limit)," LIMIT %d",limit);
+	mysql_format(MySQL:connectionhandle, query, sizeof(query),"SELECT %s FROM `%s` WHERE `%s`='%e'%s ", select, table, column_where, row_identifier, str_limit);
 	result = mysql_query(MySQL:connectionhandle, query);
 	if(mysql_errno() != 0)
 	{
@@ -2526,10 +2527,10 @@ stock SQL::RowExistsEx(const table[], const column_where[] = "", const row_ident
 	return 0;
 }
 
-stock SQL::RowExistsEx2(const table[], const column_where[] = "", const row_identifier[], const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::RowExistsEx2(const table[], const column_where[] = "", const row_identifier[], const column_where2[] = "", const row_identifier2[] = "", row_identifier3 = -1, const select[]="1", limit = 1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
 	new query[SQL_FORM_LENGTH], query2[SQL_FORM_LENGTH], Cache:result, rows;
-	mysql_format(MySQL:connectionhandle, query, sizeof(query), "SELECT * FROM `%s` WHERE `%s`='%e'", table, column_where, row_identifier);
+	mysql_format(MySQL:connectionhandle, query, sizeof(query), "SELECT %s FROM `%s` WHERE `%s`='%e'", select, table, column_where, row_identifier);
 	if(!isnull(column_where2) && !isnull(row_identifier2) && row_identifier3 == -1)
 	{
 		mysql_format(MySQL:connectionhandle, query2, sizeof(query2), " AND `%s`='%e'", column_where2, row_identifier2);
@@ -2538,6 +2539,11 @@ stock SQL::RowExistsEx2(const table[], const column_where[] = "", const row_iden
 	if(!isnull(column_where2) && row_identifier3 != -1 && isnull(row_identifier2))
 	{
 		mysql_format(MySQL:connectionhandle, query2, sizeof(query2), " AND `%s`='%d'", column_where2, row_identifier3);
+		strcat(query, query2);
+	}
+	if(limit > 0) 
+	{
+		mysql_format(MySQL:connectionhandle, query2, sizeof(query2), " LIMIT %d",limit);
 		strcat(query, query2);
 	}
 	strcat(query, " ");
@@ -2571,10 +2577,11 @@ stock SQL::DropTable(const table[], MySQL:connectionhandle = MYSQL_DEFAULT_HANDL
 	return 0;
 }
 
-stock SQL::RowExists(const table[], const column_where[] = "", row_identifier = -1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::RowExists(const table[], const column_where[] = "", row_identifier = -1, const select[]="1", limit = 1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
-	new query[SQL_FORM_LENGTH], Cache:result, rows;
-	mysql_format(MySQL:connectionhandle, query, sizeof(query),"SELECT * FROM `%s` WHERE `%s`='%d' ", table, column_where, row_identifier);
+	new query[SQL_FORM_LENGTH], Cache:result, rows, str_limit[11];
+	if(limit > 0) format(str_limit,sizeof(str_limit)," LIMIT %d",limit);
+	mysql_format(MySQL:connectionhandle, query, sizeof(query),"SELECT %s FROM `%s` WHERE `%s`='%d'%s ", select, table, column_where, row_identifier, str_limit);
 	result = mysql_query(MySQL:connectionhandle, query);
 	if(mysql_errno() != 0)
 	{
@@ -2589,10 +2596,10 @@ stock SQL::RowExists(const table[], const column_where[] = "", row_identifier = 
 	return 0;
 }
 
-stock SQL::RowExists2(const table[], const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
+stock SQL::RowExists2(const table[], const column_where[] = "", row_identifier = -1, const column_where2[] = "", row_identifier2 = -1, const row_identifier3[] = "", const select[]="1", limit = 1, MySQL:connectionhandle = MYSQL_DEFAULT_HANDLE)
 {
 	new query[SQL_FORM_LENGTH], query2[SQL_FORM_LENGTH], Cache:result, rows;
-	mysql_format(MySQL:connectionhandle, query, sizeof(query), "SELECT * FROM `%s` WHERE `%s`='%d'", table, column_where, row_identifier);
+	mysql_format(MySQL:connectionhandle, query, sizeof(query), "SELECT %s FROM `%s` WHERE `%s`='%d'", select, table, column_where, row_identifier);
 	if(!isnull(column_where2) && row_identifier2 != -1 && isnull(row_identifier3))
 	{
 		mysql_format(MySQL:connectionhandle, query2, sizeof(query2), " AND `%s`='%d'", column_where2, row_identifier2);
@@ -2601,6 +2608,11 @@ stock SQL::RowExists2(const table[], const column_where[] = "", row_identifier =
 	if(!isnull(column_where2) && !isnull(row_identifier3) && row_identifier2 == -1)
 	{
 		mysql_format(MySQL:connectionhandle, query2, sizeof(query2), " AND `%s`='%s'", column_where2, row_identifier3);
+		strcat(query, query2);
+	}
+	if(limit > 0) 
+	{
+		mysql_format(MySQL:connectionhandle, query2, sizeof(query2), " LIMIT %d",limit);
 		strcat(query, query2);
 	}
 	strcat(query, " ");
